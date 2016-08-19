@@ -218,9 +218,50 @@ module JetSpider
     end
 
     def visit_AddNode(n)
-      visit n.left
-      visit n.value
-      @asm.add
+      # add or num
+      optimized = optimize_Add_Node(n)
+      if is_NumberNode?(optimized)
+        @asm.int8(optimized.value)
+      else
+        visit optimized.value
+        visit optimized.left
+        @asm.add
+      end
+    end
+
+    # return numbernode or else
+    def optimize_Add_Node(n)
+      if is_ParentheticalNode?(n)
+        return optimize_Add_Node(n.value)
+      end
+
+      if is_AddNode?(n)
+        # 両辺が最適化された node
+        optimized_value = optimize_Add_Node(n.value)
+        optimized_left = optimize_Add_Node(n.left)
+        if is_NumberNode?(optimized_value) and is_NumberNode?(optimized_left)
+          return RKelly::Nodes::NumberNode.new(optimized_value.value + optimized_left.value)
+        else
+          # numbernode でなければそのまま返す
+          return RKelly::Nodes::AddNode.new(optimized_value, optimized_left)
+        end
+      end
+
+      # add, parenthetical 以外ならそのまま返す
+      return n
+    end
+
+    def is_NumberNode?(n)
+      return n.is_a?(RKelly::Nodes::NumberNode)
+    end
+
+    # () で発生
+    def is_ParentheticalNode?(n)
+      return n.is_a?(RKelly::Nodes::ParentheticalNode)
+    end
+
+    def is_AddNode?(n)
+      return n.is_a?(RKelly::Nodes::AddNode)
     end
 
     def visit_SubtractNode(n)
