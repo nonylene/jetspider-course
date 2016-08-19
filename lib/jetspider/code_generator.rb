@@ -240,7 +240,7 @@ module JetSpider
         optimized_value = optimize_Add_Node(n.value)
         optimized_left = optimize_Add_Node(n.left)
         if is_NumberNode?(optimized_value) and is_NumberNode?(optimized_left)
-          return RKelly::Nodes::NumberNode.new(optimized_value.value + optimized_left.value)
+          return create_NumberNode(optimized_value.value + optimized_left.value)
         else
           # numbernode でなければそのまま返す
           return RKelly::Nodes::AddNode.new(optimized_value, optimized_left)
@@ -283,11 +283,35 @@ module JetSpider
     simple_binary_op 'ModulusNode', :mod
 
     def visit_UnaryPlusNode(n)
-      raise NotImplementedError, 'UnaryPlusNode'
+      visit n.value
     end
 
     def visit_UnaryMinusNode(n)
-      raise NotImplementedError, 'UnaryMinusNode'
+      if is_NumberNode?(n.value)
+        visit create_NumberNode(-n.value.value)
+      else
+        visit n.value
+        @asm.neg
+      end
+    end
+
+    def create_NumberNode(number)
+      RKelly::Nodes::NumberNode.new(number)
+    end
+
+    # push int8 or int32
+    def push_number(number)
+      if number == 1
+        @asm.one
+      elsif number < 2**7 and number >= -2**7
+        @asm.int8(number)
+      elsif number < 2**16 and number >= 0
+        @asm.uint16(number)
+      elsif number < 2**24 and number >= 0
+        @asm.uint24(number)
+      else
+        @asm.int32(number)
+      end
     end
 
     def visit_PrefixNode(n)
@@ -371,11 +395,7 @@ module JetSpider
     end
 
     def visit_NumberNode(n)
-      if n.value == 1
-        @asm.one
-      else
-        @asm.int8(n.value)
-      end
+      push_number(n.value)
     end
 
     def visit_StringNode(n)
