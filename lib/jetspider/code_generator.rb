@@ -115,7 +115,7 @@ module JetSpider
       var = n.variable
       case
       when var.parameter?
-        raise NotImplementedError, 'ResolveNode - parameter'
+        @asm.getarg n.variable.index
       when var.local?
         raise NotImplementedError, 'ResolveNode - local'
       when var.global?
