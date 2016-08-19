@@ -178,7 +178,33 @@ module JetSpider
     end
 
     def visit_WhileNode(n)
-      raise NotImplementedError, 'WhileNode'
+      old_loc_end = @loop_loc_end
+      old_loc_first = @loop_loc_first
+
+      @loop_loc_end = @asm.lazy_location
+      @loop_loc_first = @asm.lazy_location
+
+      @asm.goto @loop_loc_first
+
+      loc_inside = @asm.location
+
+      # inside block
+      # block node -> source elements node -> nodes
+      visit n.value
+
+      # if query
+      @asm.fix_location @loop_loc_first
+
+      visit n.left
+      @asm.ifeq @loop_loc_end
+      # no loop
+      @asm.goto loc_inside
+
+      @asm.fix_location @loop_loc_end
+
+      # recover loc
+      @loop_loc_end = old_loc_end
+      @loop_loc_first = old_loc_first
     end
 
     def visit_DoWhileNode(n)
@@ -190,11 +216,11 @@ module JetSpider
     end
 
     def visit_BreakNode(n)
-      raise NotImplementedError, 'BreakNode'
+      @asm.goto @loop_loc_end
     end
 
     def visit_ContinueNode(n)
-      raise NotImplementedError, 'ContinueNode'
+      @asm.goto @loop_loc_first
     end
 
     def visit_SwitchNode(n) raise "SwitchNode not implemented"; end
@@ -249,6 +275,10 @@ module JetSpider
 
       # add, parenthetical 以外ならそのまま返す
       return n
+    end
+
+    def is_WhileNode?(n)
+      return n.is_a?(RKelly::Nodes::WhileNode)
     end
 
     def is_NumberNode?(n)
