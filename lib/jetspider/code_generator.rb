@@ -117,7 +117,7 @@ module JetSpider
       when var.parameter?
         @asm.getarg n.variable.index
       when var.local?
-        raise NotImplementedError, 'ResolveNode - local'
+        @asm.getlocal n.variable.index
       when var.global?
         @asm.getgname var.name
       else
@@ -126,19 +126,33 @@ module JetSpider
     end
 
     def visit_OpEqualNode(n)
-      raise NotImplementedError, 'OpEqualNode'
+      if n.left.variable.global?
+        @asm.bindgname n.left.value
+        visit n.value
+        @asm.setgname n.left.value
+      else
+        visit n.value
+        @asm.setlocal n.left.variable.index
+      end
     end
 
     def visit_VarStatementNode(n)
-      raise NotImplementedError, 'VarStatementNode'
+      n.value.each {|item| visit item }
     end
 
     def visit_VarDeclNode(n)
-      raise NotImplementedError, 'VarDeclNode'
+      if n.variable.global?
+        @asm.bindgname n.name
+        visit n.value
+        @asm.setgname n.name
+      else
+        visit n.value
+        @asm.setlocal n.variable.index
+      end
     end
 
     def visit_AssignExprNode(n)
-      raise NotImplementedError, 'AssignExprNode'
+      visit n.value
     end
 
     # We do not support let, const, with
@@ -275,6 +289,10 @@ module JetSpider
 
       # add, parenthetical 以外ならそのまま返す
       return n
+    end
+
+    def is_GlobalVariable?(g)
+      return g.is_a?(JetSpider::GlobalVariable)
     end
 
     def is_WhileNode?(n)
