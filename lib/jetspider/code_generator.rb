@@ -163,7 +163,15 @@ module JetSpider
     end
 
     def visit_ConditionalNode(n)
-      raise NotImplementedError, 'ConditinalNode'
+      visit n.conditions
+      loc = @asm.lazy_location
+      loc_end = @asm.lazy_location
+      @asm.ifeq loc
+      visit n.value
+      @asm.goto loc_end
+      @asm.fix_location loc
+      visit n.else
+      @asm.fix_location loc_end
     end
 
     def visit_WhileNode(n)
